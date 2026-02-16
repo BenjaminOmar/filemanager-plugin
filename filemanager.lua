@@ -525,7 +525,7 @@ local function open_tree()
 	-- Set the various display settings, but only on our view (by using SetLocalOption instead of SetOption)
 	-- NOTE: Micro requires the true/false to be a string
 	-- Softwrap long strings (the file/dir paths)
-    tree_view.Buf:SetOptionNative("softwrap", true)
+    tree_view.Buf:SetOptionNative("softwrap", false)
     -- No line numbering
     tree_view.Buf:SetOptionNative("ruler", false)
     -- Is this needed with new non-savable settings from being "vtLog"?
@@ -567,12 +567,18 @@ end
 -- If it's actually a file, open it in a new vsplit
 -- THIS EXPECTS ZERO-BASED Y
 local function try_open_at_y(y)
-	-- 2 is the zero-based index of ".."
-	if y == 2 then
+	local areThereAnyTabsOpened = #micro.Tabs().Names > 1
+	local backDirPosition = 2
+	if areThereAnyTabsOpened then backDirPosition = 3 end
+
+	if y == backDirPosition then
 		go_back_dir()
-	elseif y > 2 and not scanlist_is_empty() then
+	elseif y > backDirPosition and not scanlist_is_empty() then
 		-- -2 to conform to our scanlist "missing" first 3 indicies
-		y = y - 2
+		y = y - backDirPosition
+		if y > #scanlist then
+			return
+		end
 		if scanlist[y].dirmsg ~= "" then
 			-- if passed path is a directory, update the current dir to be one deeper..
 			update_current_dir(scanlist[y].abspath)
@@ -896,7 +902,7 @@ local function open_tree()
 	-- Set the various display settings, but only on our view (by using SetLocalOption instead of SetOption)
 	-- NOTE: Micro requires the true/false to be a string
 	-- Softwrap long strings (the file/dir paths)
-    tree_view.Buf:SetOptionNative("softwrap", true)
+    tree_view.Buf:SetOptionNative("softwrap", false)
     -- No line numbering
     tree_view.Buf:SetOptionNative("ruler", false)
     -- Is this needed with new non-savable settings from being "vtLog"?
@@ -1184,11 +1190,9 @@ end
 function preMousePress(view, event)
 	if view == tree_view then
 		local x, y = event:Position()
-		-- Fixes the y because softwrap messes with it
-		local new_x, new_y = tree_view:GetMouseClickLocation(x, y)
 		-- Try to open whatever is at the click's y index
 		-- Will go into/back dirs based on what's clicked, nothing gets expanded
-		try_open_at_y(new_y)
+		try_open_at_y(y)
 		-- Don't actually allow the mousepress to trigger, so we avoid highlighting stuff
 		return false
 	end
@@ -1197,9 +1201,6 @@ end
 
 -- @Jakku Night: Opens a new tree if tab switched:
 function onMousePress(view, event)
-	if micro.CurTab() ~= tree_view:Tab() then
-		micro.InfoBar():Message("Tab was Switched.")
-	end
 end
 
 -- Up
