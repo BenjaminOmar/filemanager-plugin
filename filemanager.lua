@@ -586,9 +586,6 @@ local function try_open_at_y(y)
 			-- Switch to the next split and open the file there
 			micro.CurPane():NextSplit()
 			micro.CurPane():OpenCmd({scanlist[y].abspath})
-			open_tree()
-			-- Resizes all views after opening a file
-			-- tabs[curTab + 1]:Resize()
 		end
 	else
 		micro.InfoBar():Error("Can't open that")
@@ -930,12 +927,26 @@ function toggle_tree()
 	end
 end
 
+-- Check if tree_view is still a valid open pane
+local function tree_is_open()
+	if tree_view == nil then
+		return false
+	end
+	-- Try accessing the buffer — if the pane was closed, this will fail
+	local ok, _ = pcall(function() return tree_view.Buf end)
+	if not ok then
+		tree_view = nil
+		return false
+	end
+	return true
+end
+
 -- smart_toggle: Ctrl+b behavior
 -- If tree is closed → open it and focus it
 -- If tree is open and cursor is in a code pane → focus the tree
 -- If tree is open and cursor is in the tree → close it
 function smart_toggle()
-	if tree_view == nil then
+	if not tree_is_open() then
 		open_tree()
 	elseif micro.CurPane() == tree_view then
 		close_tree()
