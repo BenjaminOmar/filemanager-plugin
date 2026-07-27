@@ -1253,14 +1253,10 @@ end
 -- Ref https://github.com/zyedidia/micro/issues/992
 local tab_pressed = false
 
--- Tab
+-- Tab (disabled in tree, use Enter to open)
 function preIndentSelection(view)
 	if view == tree_view then
-		tab_pressed = true
-		-- Open the file
-		-- Using tab instead of enter, since enter won't work with Readonly
-		try_open_at_y(tree_view.Cursor.Loc.Y)
-		-- Don't actually insert a tab
+		-- Don't insert a tab in the tree
 		return false
 	end
 end
@@ -1275,6 +1271,7 @@ function preInsertTab(view)
 end
 function preInsertNewline(view)
     if view == tree_view then
+        try_open_at_y(tree_view.Cursor.Loc.Y)
         return false
     end
     return true
