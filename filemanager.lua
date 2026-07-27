@@ -934,6 +934,21 @@ function toggle_tree()
 	end
 end
 
+-- smart_toggle: Ctrl+b behavior
+-- If tree is closed → open it and focus it
+-- If tree is open and cursor is in a code pane → focus the tree
+-- If tree is open and cursor is in the tree → close it
+function smart_toggle()
+	if tree_view == nil then
+		open_tree()
+	elseif micro.CurPane() == tree_view then
+		close_tree()
+	else
+		micro.CurPane():PrevSplit()
+		select_line()
+	end
+end
+
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -- Functions exposed specifically for the user to bind
 -- Some are used in callbacks as well
@@ -1460,6 +1475,8 @@ function init()
 
     -- Open/close the tree view
     config.MakeCommand("tree", toggle_tree, config.NoComplete)
+    -- Smart toggle: open+focus, focus from code, or close if in tree
+    config.MakeCommand("smarttree", smart_toggle, config.NoComplete)
     -- Rename the file/dir under the cursor
     config.MakeCommand("rename", rename_at_cursor, config.NoComplete)
     -- Create a new file
