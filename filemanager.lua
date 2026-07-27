@@ -567,9 +567,7 @@ end
 -- If it's actually a file, open it in a new vsplit
 -- THIS EXPECTS ZERO-BASED Y
 local function try_open_at_y(y)
-	local areThereAnyTabsOpened = #micro.Tabs().Names > 1
 	local backDirPosition = 2
-	if areThereAnyTabsOpened then backDirPosition = 3 end
 
 	if y == backDirPosition then
 		go_back_dir()
