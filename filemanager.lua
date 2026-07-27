@@ -1477,6 +1477,7 @@ function init()
     config.MakeCommand("tree", toggle_tree, config.NoComplete)
     -- Smart toggle: open+focus, focus from code, or close if in tree
     config.MakeCommand("smarttree", smart_toggle, config.NoComplete)
+    config.TryBindKey("Ctrl-b", "command:smarttree", true)
     -- Rename the file/dir under the cursor
     config.MakeCommand("rename", rename_at_cursor, config.NoComplete)
     -- Create a new file
