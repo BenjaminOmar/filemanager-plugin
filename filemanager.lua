@@ -567,9 +567,7 @@ end
 -- If it's actually a file, open it in a new vsplit
 -- THIS EXPECTS ZERO-BASED Y
 local function try_open_at_y(y)
-	local areThereAnyTabsOpened = #micro.Tabs().Names > 1
 	local backDirPosition = 2
-	if areThereAnyTabsOpened then backDirPosition = 3 end
 
 	if y == backDirPosition then
 		go_back_dir()
@@ -585,11 +583,9 @@ local function try_open_at_y(y)
 		else
 			-- If it's a file, then open it
 			micro.InfoBar():Message("Filemanager opened ", scanlist[y].abspath)
-			-- Opens the absolute path in new vertical view
-			--micro.CurPane():VSplitIndex(buffer.NewBufferFromFile(scanlist[y].abspath), true)
-			-- @Jakku Night: Open file in a new tab:
-			close_tree()
-			micro.CurPane():NewTabCmd({scanlist[y].abspath})
+			-- Switch to the next split and open the file there
+			micro.CurPane():NextSplit()
+			micro.CurPane():OpenCmd({scanlist[y].abspath})
 			open_tree()
 			-- Resizes all views after opening a file
 			-- tabs[curTab + 1]:Resize()
@@ -1253,14 +1249,10 @@ end
 -- Ref https://github.com/zyedidia/micro/issues/992
 local tab_pressed = false
 
--- Tab
+-- Tab (disabled in tree, use Enter to open)
 function preIndentSelection(view)
 	if view == tree_view then
-		tab_pressed = true
-		-- Open the file
-		-- Using tab instead of enter, since enter won't work with Readonly
-		try_open_at_y(tree_view.Cursor.Loc.Y)
-		-- Don't actually insert a tab
+		-- Don't insert a tab in the tree
 		return false
 	end
 end
@@ -1275,6 +1267,7 @@ function preInsertTab(view)
 end
 function preInsertNewline(view)
     if view == tree_view then
+        try_open_at_y(tree_view.Cursor.Loc.Y)
         return false
     end
     return true
