@@ -944,7 +944,7 @@ function smart_toggle()
 	elseif micro.CurPane() == tree_view then
 		close_tree()
 	else
-		micro.CurPane():PrevSplit()
+		micro.CurPane():NextSplit()
 		select_line()
 	end
 end
