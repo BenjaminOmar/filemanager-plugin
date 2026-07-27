@@ -932,23 +932,13 @@ local function tree_is_open()
 	if tree_view == nil then
 		return false
 	end
-	-- Verify the pane still exists in the current tab
-	local tabs = micro.Tabs()
-	if tabs == nil then
+	-- Try accessing the buffer — if the pane was closed, this will fail
+	local ok, _ = pcall(function() return tree_view.Buf end)
+	if not ok then
+		tree_view = nil
 		return false
 	end
-	local cur_tab = tabs:CurTab()
-	if cur_tab == nil then
-		return false
-	end
-	for i = 0, cur_tab:Panes() - 1 do
-		if cur_tab:Pane(i) == tree_view then
-			return true
-		end
-	end
-	-- Pane no longer exists, clean up reference
-	tree_view = nil
-	return false
+	return true
 end
 
 -- smart_toggle: Ctrl+b behavior
