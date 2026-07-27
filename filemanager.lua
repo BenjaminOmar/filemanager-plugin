@@ -583,14 +583,10 @@ local function try_open_at_y(y)
 		else
 			-- If it's a file, then open it
 			micro.InfoBar():Message("Filemanager opened ", scanlist[y].abspath)
-			-- Opens the absolute path in new vertical view
-			--micro.CurPane():VSplitIndex(buffer.NewBufferFromFile(scanlist[y].abspath), true)
-			-- @Jakku Night: Open file in a new tab:
+			-- Open file in current pane (no new tabs)
 			close_tree()
-			micro.CurPane():NewTabCmd({scanlist[y].abspath})
+			micro.CurPane():OpenCmd({scanlist[y].abspath})
 			open_tree()
-			-- Resizes all views after opening a file
-			-- tabs[curTab + 1]:Resize()
 		end
 	else
 		micro.InfoBar():Error("Can't open that")
