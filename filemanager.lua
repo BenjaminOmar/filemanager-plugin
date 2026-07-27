@@ -508,57 +508,6 @@ local function go_back_dir()
 	end
 end
 
--- open_tree setup's the view
-local function open_tree()
-	-- Open a new Vsplit (on the very left)
-	micro.CurPane():VSplitIndex(buffer.NewBuffer("", "filemanager"), false)
-	-- Save the new view so we can access it later
-	tree_view = micro.CurPane()
-	
-	-- Set the width of tree_view to 30% & lock it
-    tree_view:ResizePane(20)
-	-- Set the type to unsavable
-    -- tree_view.Buf.Type = buffer.BTLog
-    tree_view.Buf.Type.Scratch = true
-    tree_view.Buf.Type.Readonly = true
-
-	-- Set the various display settings, but only on our view (by using SetLocalOption instead of SetOption)
-	-- NOTE: Micro requires the true/false to be a string
-	-- Softwrap long strings (the file/dir paths)
-    tree_view.Buf:SetOptionNative("softwrap", false)
-    -- No line numbering
-    tree_view.Buf:SetOptionNative("ruler", false)
-    -- Is this needed with new non-savable settings from being "vtLog"?
-    tree_view.Buf:SetOptionNative("autosave", false)
-    -- Don't show the statusline to differentiate the view from normal views
-    tree_view.Buf:SetOptionNative("statusformatr", "")
-    tree_view.Buf:SetOptionNative("statusformatl", "filemanager")
-    tree_view.Buf:SetOptionNative("scrollbar", false)
-
-	-- Fill the scanlist, and then print its contents to tree_view
-	update_current_dir(os.Getwd())
-	-- @Jakku Night: Moves the cursor to the next tab:
-	micro.CurPane():NextSplit()
-end
-
--- close_tree will close the tree plugin view and release memory.
-local function close_tree()
-	if tree_view ~= nil then
-		tree_view:Quit()
-		tree_view = nil
-		clear_messenger()
-	end
-end
-
--- toggle_tree will toggle the tree view visible (create) and hide (delete).
-function toggle_tree()
-	if tree_view == nil then
-		open_tree()
-	else
-		close_tree()
-	end
-end
-
 
 -- Tries to open the current index
 -- If it's the top dir indicator, or separator, nothing happens
@@ -878,9 +827,48 @@ function new_dir(bp, args)
 	create_filedir(dir_name, true)
 end
 
+-- Check if a filemanager pane already exists
+local function tree_is_open()
+	if tree_view ~= nil then
+		local ok, buf = pcall(function() return tree_view.Buf end)
+		if ok and buf ~= nil then
+			return true
+		end
+		tree_view = nil
+	end
+	return false
+end
+
+-- Find and reclaim any existing filemanager pane (e.g. after reload)
+local function reclaim_tree()
+	if tree_view ~= nil then return end
+	-- Check if the current pane is a leftover filemanager
+	local pane = micro.CurPane()
+	if pane ~= nil then
+		local ok, name = pcall(function() return pane.Buf.Name end)
+		if ok and name == "filemanager" then
+			tree_view = pane
+			return
+		end
+	end
+	-- Check the next split too
+	local ok2, pane2 = pcall(function() return pane:NextSplit() end)
+	if ok2 and pane2 ~= nil and pane2 ~= pane then
+		local ok3, name2 = pcall(function() return pane2.Buf.Name end)
+		if ok3 and name2 == "filemanager" then
+			tree_view = pane2
+			return
+		end
+	end
+end
+
 -- open_tree setup's the view
 local function open_tree()
-	-- Open a new Vsplit (on the very left)
+	-- Don't open if a filemanager pane already exists
+	reclaim_tree()
+	if tree_view ~= nil then
+		return
+	end
 	micro.CurPane():VSplitIndex(buffer.NewBuffer("", "filemanager"), false)
 	-- Save the new view so we can access it later
 	tree_view = micro.CurPane()
@@ -911,11 +899,13 @@ end
 
 -- close_tree will close the tree plugin view and release memory.
 local function close_tree()
+	-- Reclaim any stale reference first
+	reclaim_tree()
 	if tree_view ~= nil then
-		tree_view:Quit()
+		pcall(function() tree_view:Quit() end)
 		tree_view = nil
-		clear_messenger()
 	end
+	clear_messenger()
 end
 
 -- toggle_tree will toggle the tree view visible (create) and hide (delete).
@@ -928,25 +918,13 @@ function toggle_tree()
 end
 
 -- Check if tree_view is still a valid open pane
-local function tree_is_open()
-	if tree_view == nil then
-		return false
-	end
-	-- Try accessing the buffer — if the pane was closed, this will fail
-	local ok, _ = pcall(function() return tree_view.Buf end)
-	if not ok then
-		tree_view = nil
-		return false
-	end
-	return true
-end
-
 -- smart_toggle: Ctrl+b behavior
 -- If tree is closed → open it and focus it
 -- If tree is open and cursor is in a code pane → focus the tree
 -- If tree is open and cursor is in the tree → close it
 function smart_toggle()
-	if not tree_is_open() then
+	reclaim_tree()
+	if tree_view == nil then
 		open_tree()
 	elseif micro.CurPane() == tree_view then
 		close_tree()
@@ -1497,17 +1475,11 @@ function init()
     -- Just auto-open if the option is enabled
     -- This will run when the plugin first loads
     if config.GetGlobalOption("filemanager.openonstart") then
-        -- Check for safety on the off-chance someone's init.lua breaks this
-        if tree_view == nil then
-            open_tree()
-            -- Puts the cursor back in the empty view that initially spawns
-            -- This is so the cursor isn't sitting in the tree view at startup
-            micro.CurPane():NextSplit()
-        else
-            -- Log error so they can fix it
-            micro.Log(
-                "Warning: filemanager.openonstart was enabled, but somehow the tree was already open so the option was ignored."
-            )
-        end
+        -- Close any stale tree pane from a previous reload first
+        close_tree()
+        open_tree()
+        -- Puts the cursor back in the empty view that initially spawns
+        -- This is so the cursor isn't sitting in the tree view at startup
+        micro.CurPane():NextSplit()
     end
 end
