@@ -842,24 +842,39 @@ end
 -- Find and reclaim any existing filemanager pane (e.g. after reload)
 local function reclaim_tree()
 	if tree_view ~= nil then return end
-	-- Check if the current pane is a leftover filemanager
-	local pane = micro.CurPane()
-	if pane ~= nil then
-		local ok, name = pcall(function() return pane.Buf.Name end)
-		if ok and name == "filemanager" then
-			tree_view = pane
-			return
-		end
+	-- Check current pane
+	local pane1 = micro.CurPane()
+	local ok1, name1 = pcall(function() return pane1.Buf.Name end)
+	if ok1 and name1 == "filemanager" then
+		tree_view = pane1
+		return
 	end
-	-- Check the next split too
-	local ok2, pane2 = pcall(function() return pane:NextSplit() end)
-	if ok2 and pane2 ~= nil and pane2 ~= pane then
-		local ok3, name2 = pcall(function() return pane2.Buf.Name end)
-		if ok3 and name2 == "filemanager" then
+	-- NextSplit moves focus to the next split, then we check CurPane
+	pcall(function() pane1:NextSplit() end)
+	local pane2 = micro.CurPane()
+	if pane2 ~= pane1 then
+		local ok2, name2 = pcall(function() return pane2.Buf.Name end)
+		if ok2 and name2 == "filemanager" then
 			tree_view = pane2
 			return
 		end
+		-- Go back to original pane
+		pane2:NextSplit()
 	end
+end
+
+-- Close ALL filemanager panes by cycling through splits
+local function close_all_filemanager_panes()
+	-- Reclaim first so tree_view points to any existing pane
+	reclaim_tree()
+	-- Quit the reclaimed pane
+	while tree_view ~= nil do
+		pcall(function() tree_view:Quit() end)
+		tree_view = nil
+		-- Check if another filemanager pane remains
+		reclaim_tree()
+	end
+	clear_messenger()
 end
 
 -- open_tree setup's the view
@@ -899,13 +914,7 @@ end
 
 -- close_tree will close the tree plugin view and release memory.
 local function close_tree()
-	-- Reclaim any stale reference first
-	reclaim_tree()
-	if tree_view ~= nil then
-		pcall(function() tree_view:Quit() end)
-		tree_view = nil
-	end
-	clear_messenger()
+	close_all_filemanager_panes()
 end
 
 -- toggle_tree will toggle the tree view visible (create) and hide (delete).
@@ -1475,8 +1484,8 @@ function init()
     -- Just auto-open if the option is enabled
     -- This will run when the plugin first loads
     if config.GetGlobalOption("filemanager.openonstart") then
-        -- Close any stale tree pane from a previous reload first
-        close_tree()
+        -- Close any stale filemanager panes from a previous reload first
+        close_all_filemanager_panes()
         open_tree()
         -- Puts the cursor back in the empty view that initially spawns
         -- This is so the cursor isn't sitting in the tree view at startup
