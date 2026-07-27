@@ -583,10 +583,9 @@ local function try_open_at_y(y)
 		else
 			-- If it's a file, then open it
 			micro.InfoBar():Message("Filemanager opened ", scanlist[y].abspath)
-			-- Open file in current pane (no new tabs)
-			close_tree()
+			-- Switch to the next split and open the file there
+			micro.CurPane():NextSplit()
 			micro.CurPane():OpenCmd({scanlist[y].abspath})
-			open_tree()
 		end
 	else
 		micro.InfoBar():Error("Can't open that")
